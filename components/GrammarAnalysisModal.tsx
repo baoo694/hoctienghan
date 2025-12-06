@@ -35,8 +35,8 @@ export default function GrammarAnalysisModal({ sentence, onClose }: GrammarAnaly
       try {
         const response = await fetch('/api/saved-grammar');
         if (response.ok) {
-          const saved = await response.json();
-          const savedNames = new Set<string>(saved.map((g: any) => g.grammar_name_korean));
+          const saved: Array<{ grammar_name_korean: string }> = await response.json();
+          const savedNames = new Set<string>(saved.map((g) => g.grammar_name_korean));
           setSavedGrammar(savedNames);
         }
       } catch (error) {
