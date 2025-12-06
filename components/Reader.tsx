@@ -38,6 +38,26 @@ export default function Reader({ lesson }: ReaderProps) {
     }
   };
 
+  const handleVocabularyClick = (vocab: Vocabulary) => {
+    // Find a sentence containing this word in the Korean text
+    const sentences = lesson.korean_text.split(/[.!?]\s+/).filter(s => s.trim());
+    
+    // Try to find a sentence that contains the word (exact match or as part of a word)
+    let contextSentence = sentences.find(s => {
+      // Check if the word appears in the sentence (as whole word or part of compound word)
+      const words = s.split(/\s+/);
+      return words.some(w => w.includes(vocab.word) || vocab.word.includes(w.replace(/[.,!?;:]/g, '')));
+    });
+    
+    // If word not found in any sentence, use the first sentence or the full text
+    if (!contextSentence) {
+      contextSentence = sentences[0] || lesson.korean_text;
+    }
+    
+    setSelectedWord(vocab.word);
+    setContextSentence(contextSentence.trim());
+  };
+
   const handleCloseModal = () => {
     setSelectedWord(null);
     setContextSentence(null);
@@ -157,9 +177,11 @@ export default function Reader({ lesson }: ReaderProps) {
                 {lesson.vocabulary.map((vocab, index) => (
                   <div
                     key={index}
-                    className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-green-200 dark:border-green-800 hover:shadow-md transition-shadow"
+                    onClick={() => handleVocabularyClick(vocab)}
+                    className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-green-200 dark:border-green-800 hover:shadow-md transition-shadow cursor-pointer hover:border-green-400 dark:hover:border-green-600"
+                    title="Click to see detailed meaning and save word"
                   >
-                    <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+                    <div className="text-sm font-bold text-gray-900 dark:text-white mb-1 hover:text-green-600 dark:hover:text-green-400 transition-colors">
                       {vocab.word}
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-1 italic">
