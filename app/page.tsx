@@ -14,7 +14,7 @@ interface Lesson {
   topic?: string;
   vocabulary: Array<{
     word: string;
-    han_viet: string;
+    romanization: string;
     meaning: string;
   }>;
 }

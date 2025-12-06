@@ -46,11 +46,10 @@ Structure:
     try {
       // Try REST API with v1 endpoint (try newer models first)
       const restModels = [
-        'gemini-2.0-flash-live',
-        'gemini-2.5-flash-live',
+        'gemini-2.0-flash-lite',
         'gemini-2.0-flash',
-        'gemini-2.5-flash',
-        'gemini-pro'
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash'
       ];
       
       let restResponse: Response | null = null;
@@ -96,13 +95,10 @@ Structure:
       
       // Try different model names in order (using available models from API key)
       const modelNames = [
-        'gemini-2.0-flash-live',
-        'gemini-2.5-flash-live',
+        'gemini-2.0-flash-lite',
         'gemini-2.0-flash',
+        'gemini-2.5-flash-lite',
         'gemini-2.5-flash',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'gemini-pro',
       ];
 
       let result;

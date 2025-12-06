@@ -18,12 +18,10 @@ export async function GET() {
       // Note: The SDK might not have a direct listModels method
       // We'll try to test a few common models
       const testModels = [
-        'gemini-pro',
-        'models/gemini-pro',
-        'gemini-1.5-flash',
-        'models/gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'models/gemini-1.5-pro',
+        'gemini-2.0-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
       ];
 
       const availableModels: string[] = [];
@@ -53,7 +51,7 @@ export async function GET() {
         { 
           error: 'Could not list models',
           details: error.message,
-          suggestion: 'Try using gemini-pro or check your API key permissions'
+          suggestion: 'Try using gemini-2.0-flash-lite or check your API key permissions'
         },
         { status: 500 }
       );
