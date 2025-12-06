@@ -1,36 +1,179 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Korean Contextual Learning App
+
+A modern web application for learning Korean through contextual stories powered by Google Gemini AI. Users can generate Korean stories based on topics and levels, then click on words to see their meanings in context with Han-Viet pronunciations.
+
+## Features
+
+- **Topic-based Story Generation**: Generate Korean stories based on any topic (Daily Life, K-Pop, Travel, etc.)
+- **Level Selection**: Choose between Beginner, Intermediate, and Advanced levels
+- **Interactive Word Learning**: Click on any Korean word in the story to see:
+  - Han-Viet pronunciation
+  - Meaning in the specific context
+  - Detailed explanation
+- **Translation Toggle**: Show/hide full Vietnamese translation
+- **Vocabulary List**: Automatically extracted key vocabulary with pronunciations and meanings
+
+## Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **AI**: Google Gemini AI (`@google/generative-ai`)
+- **Database**: Supabase (for saving words)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ and npm
+- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- Supabase account ([Sign up here](https://supabase.com))
+
+### Installation
+
+1. Clone the repository and install dependencies:
+
+```bash
+npm install
+```
+
+2. Create a `.env.local` file in the root directory:
+
+```bash
+cp .env.local.example .env.local
+```
+
+3. Add your API keys to `.env.local`:
+
+```env
+NEXT_PUBLIC_GEMINI_API_KEY=your_actual_api_key_here
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. Set up Supabase database:
+
+   a. Create a new project at [Supabase](https://supabase.com)
+   
+   b. Go to SQL Editor and run the SQL from `supabase-schema.sql` (or copy the entire content of the file)
+   
+   This will create two tables:
+   - `word_cache`: Stores all looked-up words to avoid calling Gemini API again
+   - `saved_words`: Stores words that users want to learn
+   
+   c. Get your Supabase URL and Anon Key from Project Settings > API
+
+5. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+tuhoctienghan/
+├── app/
+│   ├── api/
+│   │   ├── generate-lesson/
+│   │   │   └── route.ts          # API route for generating lessons
+│   │   └── lookup-word/
+│   │       └── route.ts          # API route for word lookups
+│   ├── globals.css               # Global styles
+│   ├── layout.tsx                # Root layout
+│   └── page.tsx                  # Main page
+├── components/
+│   ├── LessonGenerator.tsx       # Input form for topic/level
+│   ├── Reader.tsx                 # Story display with clickable words
+│   └── WordModal.tsx             # Modal showing word details
+├── .env.local.example            # Environment variables template
+└── README.md                     # This file
+```
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
+1. **Generate a Lesson**:
+   - Enter a topic (e.g., "Daily Life", "K-Pop", "Travel")
+   - Select your level (Beginner, Intermediate, or Advanced)
+   - Click "Generate Lesson"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Read the Story**:
+   - Read the generated Korean story
+   - Click on any word to see its meaning in context
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **View Translation**:
+   - Click "Show Translation" to see the full Vietnamese translation
+   - Click "Hide Translation" to hide it
 
-## Deploy on Vercel
+4. **Review Vocabulary**:
+   - Scroll down to see the key vocabulary list with pronunciations and meanings
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## API Routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### `/api/generate-lesson`
+
+Generates a Korean story based on topic and level.
+
+**Request:**
+```json
+{
+  "topic": "Daily Life",
+  "level": "Beginner"
+}
+```
+
+**Response:**
+```json
+{
+  "title": "Story Title",
+  "korean_text": "Korean story text...",
+  "vietnamese_translation": "Vietnamese translation...",
+  "vocabulary": [
+    {
+      "word": "한국어",
+      "han_viet": "Han Quốc ngữ",
+      "meaning": "Tiếng Hàn"
+    }
+  ]
+}
+```
+
+### `/api/lookup-word`
+
+Looks up a word's meaning in context.
+
+**Request:**
+```json
+{
+  "word": "한국어",
+  "context_sentence": "한국어를 배우고 있습니다."
+}
+```
+
+**Response:**
+```json
+{
+  "original_word": "한국어",
+  "han_viet": "Han Quốc ngữ",
+  "meaning_in_context": "Tiếng Hàn",
+  "explanation": "Explanation in Vietnamese..."
+}
+```
+
+## Building for Production
+
+```bash
+npm run build
+npm start
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

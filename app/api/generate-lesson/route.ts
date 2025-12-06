@@ -1,0 +1,190 @@
+import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export async function POST(request: Request) {
+  try {
+    const { topic, level } = await request.json();
+
+    if (!topic || !level) {
+      return NextResponse.json(
+        { error: 'Topic and level are required' },
+        { status: 400 }
+      );
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Gemini API key is not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Determine number of sentences based on level
+    const sentenceCounts: Record<string, number> = {
+      beginner: 5,
+      intermediate: 10,
+      advanced: 15,
+    };
+    
+    const sentenceCount = sentenceCounts[level.toLowerCase()] || 5;
+
+    const prompt = `You are a Korean language teacher for Vietnamese students.
+
+1. Write a short story (${sentenceCount} sentences) about "${topic}" for ${level} level students.
+2. Translate it to Vietnamese.
+3. Extract key vocabulary words with Korean romanization (Revised Romanization of Korean).
+
+RETURN JSON ONLY. Do not include any markdown formatting, code blocks, or explanations. Just the raw JSON.
+
+Structure:
+{
+  "title": "Story title in Korean",
+  "korean_text": "The full Korean story text here. Each sentence should be separated by a period and space.",
+  "vietnamese_translation": "The full Vietnamese translation here.",
+  "vocabulary": [
+    {
+      "word": "Korean word",
+      "romanization": "Korean romanization (Revised Romanization)",
+      "meaning": "Meaning in Vietnamese"
+    }
+  ]
+}`;
+
+    // Try using REST API directly first, then fallback to SDK
+    let text: string;
+    
+    try {
+      // Try REST API with v1 endpoint (try newer models first)
+      const restModels = [
+        'gemini-2.0-flash-live',
+        'gemini-2.5-flash-live',
+        'gemini-2.0-flash',
+        'gemini-2.5-flash',
+        'gemini-pro'
+      ];
+      
+      let restResponse: Response | null = null;
+      let restErrorMsg: string | null = null;
+      
+      for (const modelName of restModels) {
+        try {
+          restResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [{
+                    text: prompt
+                  }]
+                }]
+              })
+            }
+          );
+
+          if (restResponse.ok) {
+            break; // Success, exit loop
+          }
+        } catch (error: any) {
+          restErrorMsg = error.message || 'Unknown error';
+          continue;
+        }
+      }
+
+      if (restResponse && restResponse.ok) {
+        const restData = await restResponse.json();
+        text = restData.candidates[0].content.parts[0].text;
+      } else {
+        throw new Error(`REST API failed: ${restResponse?.status || restErrorMsg || 'Unknown error'}`);
+      }
+
+    } catch (sdkError) {
+      // Fallback to SDK with multiple model names
+      const genAI = new GoogleGenerativeAI(apiKey);
+      
+      // Try different model names in order (using available models from API key)
+      const modelNames = [
+        'gemini-2.0-flash-live',
+        'gemini-2.5-flash-live',
+        'gemini-2.0-flash',
+        'gemini-2.5-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-pro',
+      ];
+
+      let result;
+      let lastError;
+      
+      // Try each model until one works
+      for (const modelName of modelNames) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          result = await model.generateContent(prompt);
+          break; // Success, exit loop
+        } catch (error: any) {
+          lastError = error;
+          // Check if it's a 404 error (model not found)
+          const is404 = error.status === 404 || 
+                       error.statusCode === 404 || 
+                       error.message?.includes('404') ||
+                       error.message?.includes('not found');
+          
+          // If it's not a 404, throw immediately (other errors are more serious)
+          if (!is404) {
+            throw error;
+          }
+          // Continue to next model if 404
+          continue;
+        }
+      }
+
+      if (!result) {
+        throw new Error(
+          `None of the models are available. ` +
+          `Please check your API key permissions. ` +
+          `Last error: ${lastError?.message || 'Unknown error'}. ` +
+          `You can visit https://aistudio.google.com/app/apikey to check your API key.`
+        );
+      }
+      
+      const response = result.response;
+      text = response.text();
+    }
+
+    // Remove markdown code blocks if present
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    // Try to extract JSON if there's extra text
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      text = jsonMatch[0];
+    }
+
+    const jsonResponse = JSON.parse(text);
+
+    // Validate the response structure
+    if (!jsonResponse.korean_text || !jsonResponse.vietnamese_translation) {
+      return NextResponse.json(
+        { error: 'Invalid response format from AI' },
+        { status: 500 }
+      );
+    }
+
+    // Add topic to response
+    jsonResponse.topic = topic;
+
+    return NextResponse.json(jsonResponse);
+  } catch (error: any) {
+    console.error('Error generating lesson:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate lesson', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+

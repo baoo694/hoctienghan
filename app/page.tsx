@@ -1,65 +1,153 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { BookOpen, Sparkles, GraduationCap } from 'lucide-react';
+import LessonGenerator from '@/components/LessonGenerator';
+import Reader from '@/components/Reader';
+import SavedWords from '@/components/SavedWords';
+import SavedGrammar from '@/components/SavedGrammar';
+
+interface Lesson {
+  title: string;
+  korean_text: string;
+  vietnamese_translation: string;
+  topic?: string;
+  vocabulary: Array<{
+    word: string;
+    han_viet: string;
+    meaning: string;
+  }>;
+}
+
+type ViewMode = 'lesson' | 'saved-words' | 'saved-grammar';
 
 export default function Home() {
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('lesson');
+  const [savedWordsCount, setSavedWordsCount] = useState(0);
+  const [savedGrammarCount, setSavedGrammarCount] = useState(0);
+
+  // Update saved words count when storage changes
+  useEffect(() => {
+    const updateWordCount = async () => {
+      try {
+        const response = await fetch('/api/saved-words');
+        if (response.ok) {
+          const words = await response.json();
+          setSavedWordsCount(words.length);
+        } else {
+          setSavedWordsCount(0);
+        }
+      } catch (error) {
+        setSavedWordsCount(0);
+      }
+    };
+
+    const updateGrammarCount = async () => {
+      try {
+        const response = await fetch('/api/saved-grammar');
+        if (response.ok) {
+          const grammar = await response.json();
+          setSavedGrammarCount(grammar.length);
+        } else {
+          setSavedGrammarCount(0);
+        }
+      } catch (error) {
+        setSavedGrammarCount(0);
+      }
+    };
+
+    updateWordCount();
+    updateGrammarCount();
+    window.addEventListener('savedWordsUpdated', updateWordCount);
+    window.addEventListener('savedGrammarUpdated', updateGrammarCount);
+
+    return () => {
+      window.removeEventListener('savedWordsUpdated', updateWordCount);
+      window.removeEventListener('savedGrammarUpdated', updateGrammarCount);
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden">
+      <div className="container mx-auto max-w-7xl h-full px-4 py-2 flex flex-col">
+        {/* Navigation Tabs */}
+        <div className="flex gap-3 justify-center mb-3 flex-wrap flex-shrink-0">
+          <button
+            onClick={() => setViewMode('lesson')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+              viewMode === 'lesson'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <Sparkles className="w-4 h-4" />
+            Bài học mới
+          </button>
+          <button
+            onClick={() => setViewMode('saved-words')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-colors text-sm font-medium relative ${
+              viewMode === 'saved-words'
+                ? 'bg-purple-600 text-white shadow-lg'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
           >
-            Documentation
-          </a>
+            <BookOpen className="w-4 h-4" />
+            Từ mới
+            {savedWordsCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                {savedWordsCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setViewMode('saved-grammar')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-colors text-sm font-medium relative ${
+              viewMode === 'saved-grammar'
+                ? 'bg-green-600 text-white shadow-lg'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            Ngữ pháp
+            {savedGrammarCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                {savedGrammarCount}
+              </span>
+            )}
+          </button>
         </div>
-      </main>
-    </div>
+
+        {/* Content based on view mode */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'saved-words' ? (
+            <SavedWords />
+          ) : viewMode === 'saved-grammar' ? (
+            <SavedGrammar />
+          ) : !lesson ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <LessonGenerator onGenerate={setLesson} />
+            </div>
+          ) : (
+            <div className="h-full flex flex-col">
+              <div className="flex justify-between items-center mb-2 flex-shrink-0">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Your Lesson
+                </h1>
+                <button
+                  onClick={() => setLesson(null)}
+                  className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
+                >
+                  New Lesson
+                </button>
+              </div>
+              <div className="flex-1 min-h-0">
+                <Reader lesson={lesson} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
