@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, hasSupabaseCredentials } from '@/lib/supabase';
 import { callGroqAPI } from '@/lib/groq';
 
 export async function POST(request: Request) {
@@ -16,29 +16,31 @@ export async function POST(request: Request) {
     // Normalize sentence for comparison (trim and normalize whitespace)
     const normalizedSentence = sentence.trim().replace(/\s+/g, ' ');
 
-    // Check cache first
-    const { data: cached, error: cacheError } = await supabase
-      .from('sentence_grammar_cache')
-      .select('*')
-      .eq('sentence', normalizedSentence)
-      .single();
+    // Check cache first (only if credentials are configured)
+    if (hasSupabaseCredentials()) {
+      const { data: cached, error: cacheError } = await supabase
+        .from('sentence_grammar_cache')
+        .select('*')
+        .eq('sentence', normalizedSentence)
+        .single();
 
-    // Check if cache exists (even if there's an error, if data exists, use it)
-    if (cached) {
-      console.log('Cache hit for sentence:', normalizedSentence);
-      // Return cached result
-      return NextResponse.json({
-        sentence: cached.sentence,
-        grammar_points: cached.grammar_points,
-      });
-    }
+      // Check if cache exists (even if there's an error, if data exists, use it)
+      if (cached) {
+        console.log('Cache hit for sentence:', normalizedSentence);
+        // Return cached result
+        return NextResponse.json({
+          sentence: cached.sentence,
+          grammar_points: cached.grammar_points,
+        });
+      }
 
-    // Log cache miss for debugging
-    if (cacheError && cacheError.code !== 'PGRST116') {
-      // PGRST116 is "not found" which is expected for cache miss
-      console.warn('Cache query error (non-critical):', cacheError);
-    } else {
-      console.log('Cache miss for sentence:', normalizedSentence);
+      // Log cache miss for debugging
+      if (cacheError && cacheError.code !== 'PGRST116') {
+        // PGRST116 is "not found" which is expected for cache miss
+        console.warn('Cache query error (non-critical):', cacheError);
+      } else {
+        console.log('Cache miss for sentence:', normalizedSentence);
+      }
     }
 
 
@@ -141,53 +143,57 @@ Structure:
     // Normalize sentence before saving to cache
     const sentenceToCache = jsonResponse.sentence.trim().replace(/\s+/g, ' ');
 
-    // Save to sentence cache
-    try {
-      const { error: cacheError } = await supabase
-        .from('sentence_grammar_cache')
-        .upsert(
-          {
-            sentence: sentenceToCache,
-            grammar_points: jsonResponse.grammar_points,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: 'sentence',
-          }
-        );
-      
-      if (cacheError) {
-        console.warn('Failed to save sentence grammar to cache:', cacheError);
-      } else {
-        console.log('Saved to cache:', sentenceToCache);
-      }
-    } catch (cacheError) {
-      // Don't fail if cache save fails
-      console.warn('Failed to save sentence grammar to cache:', cacheError);
-    }
-
-    // Save individual grammar points to grammar_cache
-    for (const grammar of jsonResponse.grammar_points) {
+    // Save to sentence cache (only if credentials are configured)
+    if (hasSupabaseCredentials()) {
       try {
-        await supabase
-          .from('grammar_cache')
+        const { error: cacheError } = await supabase
+          .from('sentence_grammar_cache')
           .upsert(
             {
-              grammar_name_korean: grammar.name_korean,
-              grammar_name_vietnamese: grammar.name_vietnamese,
-              form: grammar.form,
-              meaning: grammar.meaning,
-              explanation: grammar.explanation || '',
-              example_sentence: grammar.example_in_sentence || '',
+              sentence: sentenceToCache,
+              grammar_points: jsonResponse.grammar_points,
               updated_at: new Date().toISOString(),
             },
             {
-              onConflict: 'grammar_name_korean',
+              onConflict: 'sentence',
             }
           );
-      } catch (grammarCacheError) {
-        // Don't fail if individual grammar cache save fails
-        console.warn('Failed to save grammar point to cache:', grammarCacheError);
+        
+        if (cacheError) {
+          console.warn('Failed to save sentence grammar to cache:', cacheError);
+        } else {
+          console.log('Saved to cache:', sentenceToCache);
+        }
+      } catch (cacheError) {
+        // Don't fail if cache save fails
+        console.warn('Failed to save sentence grammar to cache:', cacheError);
+      }
+    }
+
+    // Save individual grammar points to grammar_cache (only if credentials are configured)
+    if (hasSupabaseCredentials()) {
+      for (const grammar of jsonResponse.grammar_points) {
+        try {
+          await supabase
+            .from('grammar_cache')
+            .upsert(
+              {
+                grammar_name_korean: grammar.name_korean,
+                grammar_name_vietnamese: grammar.name_vietnamese,
+                form: grammar.form,
+                meaning: grammar.meaning,
+                explanation: grammar.explanation || '',
+                example_sentence: grammar.example_in_sentence || '',
+                updated_at: new Date().toISOString(),
+              },
+              {
+                onConflict: 'grammar_name_korean',
+              }
+            );
+        } catch (grammarCacheError) {
+          // Don't fail if individual grammar cache save fails
+          console.warn('Failed to save grammar point to cache:', grammarCacheError);
+        }
       }
     }
 
