@@ -1,19 +1,9 @@
 import { NextResponse } from 'next/server';
-import { supabase, hasSupabaseCredentials } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 // GET - Get all saved grammar
 export async function GET() {
   try {
-    if (!hasSupabaseCredentials()) {
-      return NextResponse.json(
-        { 
-          error: 'Supabase credentials are not configured',
-          message: 'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables'
-        },
-        { status: 500 }
-      );
-    }
-
     const { data, error } = await supabase
       .from('saved_grammar')
       .select('*')
