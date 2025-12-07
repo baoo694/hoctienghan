@@ -1,6 +1,6 @@
 # Korean Contextual Learning App
 
-A modern web application for learning Korean through contextual stories powered by Google Gemini AI. Users can generate Korean stories based on topics and levels, then click on words to see their meanings in context with Han-Viet pronunciations.
+A modern web application for learning Korean through contextual stories powered by Groq AI (Llama 3.3 70B). Users can generate Korean stories based on topics and levels, then click on words to see their meanings in context with pronunciations.
 
 ## Features
 
@@ -19,7 +19,7 @@ A modern web application for learning Korean through contextual stories powered 
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Icons**: Lucide React
-- **AI**: Google Gemini AI (`@google/generative-ai`)
+- **AI**: Groq AI (Llama 3.3 70B Versatile)
 - **Database**: Supabase (for saving words)
 
 ## Getting Started
@@ -27,7 +27,7 @@ A modern web application for learning Korean through contextual stories powered 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- Groq API key ([Get one here](https://console.groq.com/keys))
 - Supabase account ([Sign up here](https://supabase.com))
 
 ### Installation
@@ -47,7 +47,7 @@ cp .env.local.example .env.local
 3. Add your API keys to `.env.local`:
 
 ```env
-NEXT_PUBLIC_GEMINI_API_KEY=your_actual_api_key_here
+GROQ_API_KEY=your_actual_api_key_here
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
@@ -59,7 +59,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    b. Go to SQL Editor and run the SQL from `supabase-schema.sql` (or copy the entire content of the file)
    
    This will create two tables:
-   - `word_cache`: Stores all looked-up words to avoid calling Gemini API again
+   - `word_cache`: Stores all looked-up words to avoid calling Groq API again
    - `saved_words`: Stores words that users want to learn
    
    c. Get your Supabase URL and Anon Key from Project Settings > API

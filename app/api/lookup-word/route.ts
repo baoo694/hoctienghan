@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callGroqAPI } from '@/lib/groq';
 
 export async function POST(request: Request) {
   try {
@@ -12,10 +12,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is not configured' },
+        { error: 'Groq API key is not configured' },
         { status: 500 }
       );
     }
@@ -40,128 +40,8 @@ Structure:
   "synonyms": ["synonym1", "synonym2", "synonym3"]
 }`;
 
-    // Try using REST API directly first, then fallback to SDK
-    let text: string;
-    
-    try {
-      // Try REST API with v1 endpoint (try newer models first)
-      const restModels = [
-        'gemini-2.0-flash-lite',
-        'gemini-2.0-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-2.5-flash'
-      ];
-      
-      let restResponse: Response | null = null;
-      let restError: Error | null = null;
-      
-      for (const modelName of restModels) {
-        try {
-          restResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [{
-                    text: prompt
-                  }]
-                }]
-              })
-            }
-          );
-
-          if (restResponse.ok) {
-            break; // Success, exit loop
-          }
-        } catch (error: any) {
-          restError = error;
-          continue;
-        }
-      }
-
-      if (restResponse && restResponse.ok) {
-        const restData = await restResponse.json();
-        text = restData.candidates[0].content.parts[0].text;
-      } else {
-        throw new Error(`REST API failed: ${restResponse?.status || restError?.message || 'Unknown error'}`);
-      }
-    } catch (restError) {
-      // Fallback to SDK with multiple model names
-      const genAI = new GoogleGenerativeAI(apiKey);
-      
-      // Try different model names in order (using available models from API key)
-      const modelNames = [
-        'gemini-2.0-flash-lite',
-        'gemini-2.0-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-2.5-flash',
-      ];
-
-      let result;
-      let lastError;
-      
-      // Try each model until one works
-      for (const modelName of modelNames) {
-        try {
-          const model = genAI.getGenerativeModel({ model: modelName });
-          result = await model.generateContent(prompt);
-          break; // Success, exit loop
-        } catch (error: any) {
-          lastError = error;
-          // Check if it's a 404 error (model not found) or 429 (quota exceeded)
-          const is404 = error.status === 404 || 
-                       error.statusCode === 404 || 
-                       error.message?.includes('404') ||
-                       error.message?.includes('not found');
-          
-          const is429 = error.status === 429 || 
-                       error.statusCode === 429 || 
-                       error.message?.includes('429') ||
-                       error.message?.includes('Too Many Requests') ||
-                       error.message?.includes('quota') ||
-                       error.message?.includes('Quota exceeded');
-          
-          // Continue to next model if 404 or 429 (quota exceeded)
-          if (is404 || is429) {
-            if (is429) {
-              console.warn(`Quota exceeded for model ${modelName}, trying next model...`);
-            }
-            continue;
-          }
-          
-          // If it's not a 404 or 429, throw immediately (other errors are more serious)
-          throw error;
-        }
-      }
-
-      if (!result) {
-        const isQuotaError = lastError?.status === 429 || 
-                            lastError?.message?.includes('quota') ||
-                            lastError?.message?.includes('Quota exceeded');
-        
-        if (isQuotaError) {
-          throw new Error(
-            `All models have exceeded their quota. ` +
-            `Please wait a few minutes and try again, or check your billing plan. ` +
-            `For more information: https://ai.google.dev/gemini-api/docs/rate-limits`
-          );
-        }
-        
-        throw new Error(
-          `None of the models are available. ` +
-          `Please check your API key permissions. ` +
-          `Last error: ${lastError?.message || 'Unknown error'}. ` +
-          `You can visit https://aistudio.google.com/app/apikey to check your API key.`
-        );
-      }
-      
-      const response = result.response;
-      text = response.text();
-    }
+    // Call Groq API
+    const text = await callGroqAPI(prompt);
 
     // Remove markdown code blocks if present
     text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

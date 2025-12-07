@@ -77,7 +77,7 @@ export default function WordModal({ word, contextSentence, topic, koreanText, vi
           return;
         }
 
-        // If not in cache, call Gemini API
+        // If not in cache, call Groq API
         const response = await fetch('/api/lookup-word', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
