@@ -112,22 +112,45 @@ Structure:
           break; // Success, exit loop
         } catch (error: any) {
           lastError = error;
-          // Check if it's a 404 error (model not found)
+          // Check if it's a 404 error (model not found) or 429 (quota exceeded)
           const is404 = error.status === 404 || 
                        error.statusCode === 404 || 
                        error.message?.includes('404') ||
                        error.message?.includes('not found');
           
-          // If it's not a 404, throw immediately (other errors are more serious)
-          if (!is404) {
-            throw error;
+          const is429 = error.status === 429 || 
+                       error.statusCode === 429 || 
+                       error.message?.includes('429') ||
+                       error.message?.includes('Too Many Requests') ||
+                       error.message?.includes('quota') ||
+                       error.message?.includes('Quota exceeded');
+          
+          // Continue to next model if 404 or 429 (quota exceeded)
+          if (is404 || is429) {
+            if (is429) {
+              console.warn(`Quota exceeded for model ${modelName}, trying next model...`);
+            }
+            continue;
           }
-          // Continue to next model if 404
-          continue;
+          
+          // If it's not a 404 or 429, throw immediately (other errors are more serious)
+          throw error;
         }
       }
 
       if (!result) {
+        const isQuotaError = lastError?.status === 429 || 
+                            lastError?.message?.includes('quota') ||
+                            lastError?.message?.includes('Quota exceeded');
+        
+        if (isQuotaError) {
+          throw new Error(
+            `All models have exceeded their quota. ` +
+            `Please wait a few minutes and try again, or check your billing plan. ` +
+            `For more information: https://ai.google.dev/gemini-api/docs/rate-limits`
+          );
+        }
+        
         throw new Error(
           `None of the models are available. ` +
           `Please check your API key permissions. ` +
